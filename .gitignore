@@ -1,0 +1,18 @@
+# Never commit key material, credentials, or live configs
+*.key
+*.pem
+*.pfx
+*.p12
+*.conf
+!*.conf.example
+
+# Exported live device/server configs may contain real values -
+# sanitize and rename before adding
+*-live.*
+*.bak
+*.bak-*
+
+# Windows / editor noise
+Thumbs.db
+desktop.ini
+*~
