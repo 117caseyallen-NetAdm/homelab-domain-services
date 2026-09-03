@@ -1,0 +1,69 @@
+Cisco 3560CG-1 (EAST distribution) - DHCP relay to a server at the far site
+===========================================================================
+
+The DHCP server lives at WEST (10.20.2.5). Clients at EAST are on VLAN 10.
+DHCPDISCOVER is a broadcast, and broadcasts do not cross routers - so without
+this, EAST clients get nothing.
+
+    conf t
+     interface Vlan10
+      ip helper-address 10.20.2.5
+    end
+    copy run start
+
+One line. The mechanism behind it is worth understanding properly.
+
+
+How the relay actually works
+----------------------------
+
+1. Client on VLAN 10 broadcasts DHCPDISCOVER.
+
+2. The Vlan10 SVI, now acting as a relay agent, converts it to a UNICAST
+   addressed to 10.20.2.5, and stamps the DHCP header's gateway field -
+   giaddr - with its own interface address, 10.10.1.1.
+
+3. That unicast crosses the fabric: 3560CG-1 -> SRX345 -> IPsec tunnel ->
+   PA-440 -> 3560CG-2 -> the DHCP server. Routed normally via OSPF area 0.
+
+4. The server reads giaddr and uses it to SELECT WHICH SCOPE TO SERVE FROM.
+   This is the entire trick: one server addressing subnets it has no
+   interface on.
+
+5. The offer is unicast back to 10.10.1.1, which relays it to the client.
+
+
+Two consequences that break this if missed
+------------------------------------------
+
+* The server needs a route back to the RELAY (10.10.1.1), not to the client.
+  Here that is OSPF across the IPsec tunnel. Without it the offer never
+  returns and the client times out.
+
+* A scope matching the giaddr subnet MUST exist on the server, or it silently
+  ignores the request. No error is raised and no useful log entry is written.
+
+"DHCP doesn't work at the far site" is almost always one of those two rather
+than a broken relay.
+
+
+Where a helper is and isn't needed
+----------------------------------
+
+    VLAN 20 (WEST)   no helper   - the DHCP server is on this subnet, so
+                                   client broadcasts reach it directly
+    VLAN 10 (EAST)   helper      - different subnet, different site, and a
+                                   router in between
+
+
+Verification
+------------
+
+    show run interface Vlan10                  confirm the helper is present
+    debug ip dhcp server packet                briefly, to watch the relay
+                                               (noisy - disable when done)
+
+On the DHCP server, the lease appearing in the EAST scope is the proof that
+the whole path worked:
+
+    Get-DhcpServerv4Lease -ScopeId 10.10.1.0
