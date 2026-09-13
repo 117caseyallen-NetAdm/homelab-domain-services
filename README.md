@@ -6,13 +6,15 @@
 > or the [profile](https://github.com/117caseyallen-NetAdm) for everything.
 >
 > **This documentation is living.** The lab keeps growing around this build —
-> a second domain controller, 802.1X, and PKI are next. The commit history is
-> the changelog.
+> since it shipped, the DC became the NTP authority for every network device,
+> and a config-backup service now watches the fabric. A second domain
+> controller, TACACS+, 802.1X, and PKI are next. The commit history is the
+> changelog.
 
 Active Directory Domain Services, AD-integrated DNS, and centralized DHCP for a
-**dual-site lab joined by a site-to-site IPsec tunnel**. The interesting part
-isn't installing AD — it's that **one DHCP server addresses a subnet it has no
-interface on, at a different site, across OSPF and an encrypted tunnel.**
+**dual-site lab joined by a site-to-site IPsec tunnel**. The build detail that
+matters: **one DHCP server addresses a subnet it has no interface on, at a
+different site, across OSPF and an encrypted tunnel.**
 
 Domain: `casey.corp` · Forest/domain functional level: Server 2016
 
@@ -21,9 +23,9 @@ Domain: `casey.corp` · Forest/domain functional level: Server 2016
 | Capability | How |
 |---|---|
 | **DHCP relay across a routed, tunneled fabric** | Clients at EAST get addresses from a server at WEST via `ip helper-address` and the `giaddr` field — no DHCP server on their subnet, no server interface on their VLAN |
-| **AD-integrated DNS, both directions** | Forward zone plus **reverse lookup zones for all five subnets** — so logs show names, not IP soup |
+| **AD-integrated DNS, both directions** | Forward zone plus **reverse lookup zones for all five subnets**, so logs show names |
 | **Cross-site domain membership** | A client at EAST joins and authenticates to a DC at WEST over IPsec, locating it via `_msdcs` SRV records |
-| **Time as infrastructure** | PDC emulator syncs externally; every domain member inherits it automatically through the domain hierarchy. Kerberos fails past ±5 min skew |
+| **Time as infrastructure** | PDC emulator follows four external stepping sources; every domain member inherits it automatically, and **five of the six network devices sync to it explicitly**, set to UTC. The sixth — a PA-440 sourcing service traffic from an uncabled MGT port — is documented rather than hidden. [Verified output](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#6-one-time-hierarchy-across-the-fabric) |
 | **Deliberate service placement** | DNS installed *by* promotion (AD-integrated from the start), DHCP added separately so each layer could be verified independently |
 
 ## The part worth reading: DHCP across the tunnel
@@ -96,21 +98,15 @@ Internet resolution still works; it just goes *through* the DC.
 - **[docs/build-notes.md](docs/build-notes.md)** — the build in the order it
   happened, with the verification step at each stage and the reasoning behind
   the ordering
-- **[docs/troubleshooting.md](docs/troubleshooting.md)** — what went wrong,
-  including how to read a `dcdiag` that fails on every healthy domain controller
+- **[docs/troubleshooting.md](docs/troubleshooting.md)** — what went wrong: a GUI
+  wizard reporting "installation failed" while hiding *which* component failed, a
+  domain controller that came within one command of being permanently named
+  `WIN-EL9MD23QN91`, and how to read a `dcdiag` that fails on every healthy
+  freshly-promoted DC because it is a log scraper rather than a health check
 - **[configs/](configs/)** — DNS, DHCP, and time configuration, plus the IOS
   relay config
 
-## What went wrong
-
-Documented in [docs/troubleshooting.md](docs/troubleshooting.md) — including a
-GUI wizard that reported "installation failed" while hiding *which* component
-failed, a domain controller that came within one command of being permanently
-named `WIN-EL9MD23QN91`, and a `dcdiag` test that fails on every healthy
-freshly-promoted DC because it is a log scraper rather than a health check.
-
 ---
 
-*All addressing is internal RFC1918, deliberately real — as are internal
-hostnames. No credentials, keys, public IP addresses, or public hostnames appear
-in this repository.*
+*Internal RFC1918 addressing and hostnames are real. No credentials, keys, public
+addresses, or device configurations appear in this repository.*
