@@ -192,11 +192,19 @@ names.** It costs five commands.
 Full config: [`configs/time-configuration.ps1`](../configs/time-configuration.ps1).
 
 ```powershell
-w32tm /config /manualpeerlist:"time.cloudflare.com,0x8" /syncfromflags:manual /reliable:yes /update
+w32tm /config /manualpeerlist:"time.nist.gov,0x8 0.pool.ntp.org,0x8 1.pool.ntp.org,0x8 2.pool.ntp.org,0x8" `
+      /syncfromflags:manual /reliable:yes /update
 Restart-Service w32time
 w32tm /resync /rediscover
 w32tm /query /status
 ```
+
+**Four peers, all from the same leap-second family.** A single source is an
+undetectable single point of failure — NTP's algorithm exists to compare several
+servers and identify a *falseticker*, and with one peer there is nothing to
+compare against. The four here all **step** a leap second; mixing steppers with
+smearing sources (Cloudflare, Google, AWS) makes them genuinely disagree by up to
+a second during a leap event. `time.nist.gov` is stratum 1.
 
 **`/resync /rediscover` is required** — configuring a peer does not force an
 immediate poll, and without it the status keeps reporting `Local CMOS Clock`.
@@ -209,10 +217,14 @@ the domain hierarchy automatically — which is exactly why W32Time logs a warni
 on promotion: the PDC emulator is the top of that hierarchy with nothing above
 it. Confirmed later by `nltest /sc_query` on a member reporting `HAS_TIMESERV`.
 
-*Improvement noted for later: a single NTP source is an undetectable single point
-of failure. NTP's algorithm exists to compare several servers and identify a
-falseticker — with one peer there is nothing to compare against. Three or four
-peers is standard practice.*
+**Extended to the network devices, 2026-09-13.** The DC is now the one internal
+time authority for the whole fabric — every switch and firewall points at it and
+is set to UTC. Five of the six sync; the PA-440 does not, because PAN-OS sources
+management services from an uncabled MGT port and needs a service route. Config
+and verification commands for each vendor are in
+[`configs/time-configuration.ps1`](../configs/time-configuration.ps1); captured
+output is in the hub's
+[verification.md](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#6-one-time-hierarchy-across-the-fabric).
 
 ## 11. DHCP
 
@@ -320,7 +332,9 @@ gpupdate /force
   multi-master replication to observe and repair, FSMO transfer/seizure practice,
   and DNS redundancy so one DC rebooting doesn't black-hole name resolution.
   It becomes genuine redundancy the moment a second physical node exists.
-- **Multiple NTP peers** (see §10)
+- **A service route on the PA-440** so it reaches NTP — and later DNS and
+  syslog — from its loopback rather than its uncabled MGT interface. It is
+  currently the one device outside the time hierarchy.
 - **LDAP hardening** — the promotion event log recommends rejecting SASL binds
   without signing, and enforcing Channel Binding Token validation on LDAPS.
   Both are real hardening, surfaced by the system itself.

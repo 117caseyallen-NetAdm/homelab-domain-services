@@ -1,7 +1,7 @@
 # Domain Services — AD DS, DNS, and Cross-Site DHCP
 
 > **Part of [CASEY-LAB](https://github.com/117caseyallen-NetAdm/casey-lab)** — a
-> dual-site, multi-vendor enterprise homelab. Start at the
+> dual-site, multi-vendor homelab. Start at the
 > [hub](https://github.com/117caseyallen-NetAdm/casey-lab) for the full topology,
 > or the [profile](https://github.com/117caseyallen-NetAdm) for everything.
 >
