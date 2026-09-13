@@ -184,6 +184,47 @@ genuinely cannot see a VirtIO disk.
 **Worth attaching that ISO before first boot** — discovering you need it while
 staring at an empty disk list means shutting the VM down and starting over.
 
+## The DC's NIC on the *Public* firewall profile
+
+Found while checking whether network devices could reach the DC for NTP:
+
+```powershell
+Get-NetConnectionProfile
+
+Name            : Unidentified network
+NetworkCategory : Public
+```
+
+A domain controller's own interface should read `DomainAuthenticated`. This one
+reads `Public`, which means **every firewall rule scoped to the Domain profile is
+inert** — and a large number of AD-related rules are scoped exactly that way.
+
+**Cause: a boot-order race, not a misconfiguration.** Network Location Awareness
+(`NlaSvc`) categorises the network by checking whether it can reach a domain
+controller, which it does by querying DNS. On a single-DC VM the DNS server *is
+this machine*, and it isn't running yet when NLA asks. NLA gives up, labels the
+network Unidentified, and Unidentified means Public.
+
+Mitigation — give DNS a head start:
+
+```
+sc.exe config NlaSvc start= delayed-auto
+sc.exe qc NlaSvc          # want: START_TYPE : 2 AUTO_START (DELAYED)
+```
+
+**The space after `start=` is required.** `sc.exe` parses `option= value` as two
+tokens and rejects the argument without it. PowerShell 5.1's `Set-Service` has no
+delayed-start value — that enum was added in PowerShell 7, so `-StartupType
+AutomaticDelayedStart` fails with a parameter-binding error on Server 2022.
+
+Takes effect on the next reboot. If the profile still reads Public afterwards,
+the next lever is giving `NlaSvc` an explicit dependency on the DNS service.
+
+**Why this is easy to miss:** nothing breaks loudly. NTP kept working here only
+because its inbound rule happens to be scoped `Profile: Any`. Anything relying on
+a Domain-scoped rule would fail intermittently and inexplicably weeks later.
+Check it with `Get-NetConnectionProfile` after any DC reboot.
+
 ## Errors that are not errors
 
 - **`Get-ADDomain` → "Unable to find a default server with Active Directory Web
@@ -194,6 +235,20 @@ staring at an empty disk list means shutting the VM down and starting over.
 - **`Add-DhcpServerv4Reservation` → `ResourceExists` / `DHCP 20022`** means the
   reservation already exists. The command refused to create a duplicate rather
   than failing to do the work.
+- **The DHCP post-install wizard → `Authorizing DHCP server ... Failed, Error
+  Code: 20079`.** The message reads *"The specified servers are already present
+  in the directory service"* — i.e. this server was authorized in AD previously,
+  and the wizard reports "already done" as a failure. Confirm the live state
+  rather than trusting the summary:
+  ```powershell
+  Get-DhcpServerInDC                     # the authorization list, read from AD
+  Get-DhcpServerv4Scope | Format-Table ScopeId,Name,State
+  ```
+  One correct entry and `Active` scopes means nothing is wrong. Note the wizard's
+  *other* step — creating the `DHCP Administrators` and `DHCP Users` groups for
+  role-based delegation — does succeed, and needs `Restart-Service DHCPServer`
+  before those groups take effect. Same shape as `dcdiag`'s `SystemLog` failure
+  at the top of this document: check the live state, not the tool's verdict.
 - **The DNS delegation warning during promotion.** It reports that no parent zone
   delegates `casey.corp` to this server. There is no parent — it's a private,
   self-contained namespace. Expected.
