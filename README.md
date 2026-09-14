@@ -25,7 +25,7 @@ Domain: `casey.corp` · Forest/domain functional level: Server 2016
 | **DHCP relay across a routed, tunneled fabric** | Clients at EAST get addresses from a server at WEST via `ip helper-address` and the `giaddr` field — no DHCP server on their subnet, no server interface on their VLAN |
 | **AD-integrated DNS, both directions** | Forward zone plus **reverse lookup zones for all five subnets**, so logs show names |
 | **Cross-site domain membership** | A client at EAST joins and authenticates to a DC at WEST over IPsec, locating it via `_msdcs` SRV records |
-| **Time as infrastructure** | PDC emulator follows four external stepping sources; every domain member inherits it automatically, and **five of the six network devices sync to it explicitly**, set to UTC. The sixth — a PA-440 sourcing service traffic from an uncabled MGT port — is documented rather than hidden. [Verified output](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#6-one-time-hierarchy-across-the-fabric) |
+| **Time as infrastructure** | PDC emulator follows four external stepping sources; every domain member inherits it automatically, and **all six network devices sync to it explicitly**, set to UTC. The PA-440 took an hour longer than the rest — PAN-OS sources service traffic from the MGT port, which was uncabled — and the diagnosis is written up rather than tidied away. [Verified output](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#6-one-time-hierarchy-across-the-fabric) |
 | **Deliberate service placement** | DNS installed *by* promotion (AD-integrated from the start), DHCP added separately so each layer could be verified independently |
 
 ## The part worth reading: DHCP across the tunnel

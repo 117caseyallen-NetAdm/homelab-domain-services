@@ -219,8 +219,9 @@ it. Confirmed later by `nltest /sc_query` on a member reporting `HAS_TIMESERV`.
 
 **Extended to the network devices, 2026-09-13.** The DC is now the one internal
 time authority for the whole fabric — every switch and firewall points at it and
-is set to UTC. Five of the six sync; the PA-440 does not, because PAN-OS sources
-management services from an uncabled MGT port and needs a service route. Config
+is set to UTC. All six sync. The PA-440 took an hour longer than the rest —
+PAN-OS sources management services from the MGT port rather than the dataplane,
+and that port was uncabled; it now sits on VLAN 99 at `10.99.20.2`. Config
 and verification commands for each vendor are in
 [`configs/time-configuration.ps1`](../configs/time-configuration.ps1); captured
 output is in the hub's
@@ -332,9 +333,13 @@ gpupdate /force
   multi-master replication to observe and repair, FSMO transfer/seizure practice,
   and DNS redundancy so one DC rebooting doesn't black-hole name resolution.
   It becomes genuine redundancy the moment a second physical node exists.
-- **A service route on the PA-440** so it reaches NTP — and later DNS and
-  syslog — from its loopback rather than its uncabled MGT interface. It is
-  currently the one device outside the time hierarchy.
+- ~~**A service route on the PA-440**~~ — **done 2026-09-13, then superseded.**
+  A service route made NTP source from `loopback.1` and worked immediately. The
+  MGT port was then cabled into VLAN 99 at `10.99.20.2`, which retires the whole
+  category — NTP, DNS, syslog, updates and TACACS+ are all management-plane
+  services and every one would have needed its own route. All six devices now
+  sync. The hour it took to *believe* that is written up in the hub's
+  [verification.md](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#the-sixth-device-and-the-wrong-instrument).
 - **LDAP hardening** — the promotion event log recommends rejecting SASL binds
   without signing, and enforcing Channel Binding Token validation on LDAPS.
   Both are real hardening, surfaced by the system itself.
