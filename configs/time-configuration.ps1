@@ -98,7 +98,7 @@ w32tm /query /peers
 # clock that never repeats. Windows stays local; that is a translation done
 # once, not a landmine twice a year.
 #
-# Cisco IOS (15.0 and 12.1 both accept all of this):
+# Cisco IOS (15.x and 12.1 both accept all of this):
 #   ntp server 10.20.2.5
 #   clock timezone UTC 0
 #   service timestamps log datetime msec show-timezone

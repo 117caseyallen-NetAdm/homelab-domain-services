@@ -7,8 +7,10 @@
 >
 > **This documentation is living.** The lab keeps growing around this build —
 > since it shipped, the DC became the NTP authority for every network device,
-> and a config-backup service now watches the fabric. A second domain
-> controller, TACACS+, 802.1X, and PKI are next. The commit history is the
+> a config-backup service now watches the fabric, and the directory is now the
+> identity source for every network device login via
+> [TACACS+](https://github.com/117caseyallen-NetAdm/homelab-tacacs-aaa). A
+> second domain controller, 802.1X, and PKI are next. The commit history is the
 > changelog.
 
 Active Directory Domain Services, AD-integrated DNS, and centralized DHCP for a
@@ -26,6 +28,7 @@ Domain: `casey.corp` · Forest/domain functional level: Server 2016
 | **AD-integrated DNS, both directions** | Forward zone plus **reverse lookup zones for all five subnets**, so logs show names |
 | **Cross-site domain membership** | A client at EAST joins and authenticates to a DC at WEST over IPsec, locating it via `_msdcs` SRV records |
 | **Time as infrastructure** | PDC emulator follows four external stepping sources; every domain member inherits it automatically, and **all six network devices sync to it explicitly**, set to UTC. The PA-440 took an hour longer than the rest — PAN-OS sources service traffic from the MGT port, which was uncabled — and the diagnosis is written up rather than tidied away. [Verified output](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#6-one-time-hierarchy-across-the-fabric) |
+| **Directory as the identity source for network devices** | A TACACS+ server binds to AD over LDAP to authenticate every network device login. Group membership sets privilege — `NetAdmins` gets full access, `NetOps` read-only — on four vendors. The backup tool has its own service account in `NetOps`, so nothing logs into the fabric with a shared password. [Detail](https://github.com/117caseyallen-NetAdm/homelab-tacacs-aaa) |
 | **Deliberate service placement** | DNS installed *by* promotion (AD-integrated from the start), DHCP added separately so each layer could be verified independently |
 
 ## The part worth reading: DHCP across the tunnel

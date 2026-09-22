@@ -342,6 +342,11 @@ gpupdate /force
   [verification.md](https://github.com/117caseyallen-NetAdm/casey-lab/blob/main/docs/verification.md#the-sixth-device-and-the-wrong-instrument).
 - **LDAP hardening** — the promotion event log recommends rejecting SASL binds
   without signing, and enforcing Channel Binding Token validation on LDAPS.
-  Both are real hardening, surfaced by the system itself.
-- **802.1X** via NPS, and internal PKI
+  Both are real hardening, surfaced by the system itself. It matters more now
+  that the domain has a network-facing LDAP consumer: the
+  [TACACS+ server](https://github.com/117caseyallen-NetAdm/homelab-tacacs-aaa)
+  binds on 389 with a service account, and moving it to LDAPS needs the PKI item
+  below.
+- **802.1X** via NPS, and internal PKI — the prerequisite for LDAPS, and for
+  HTTPS on every lab web UI
 - **Split-DNS** for VPN clients
